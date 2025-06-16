@@ -1,0 +1,25 @@
+<%- include('../partials/header') %>
+
+<h2>Edit User</h2>
+
+<form action="/admin/users/edit/<%= user.id %>" method="POST">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+    <label>Username:</label>
+    <input type="text" name="username" value="<%= user.username %>" required /><br>
+
+    <label>Password:</label>
+    <input type="password" name="password" placeholder="Leave blank to keep existing" /><br>
+
+    <label>Role:</label>
+    <select name="role">
+        <option value="1" <%= user.roleid === 1 ? 'selected' : '' %>>Admin</option>
+        <option value="2" <%= user.roleid === 2 ? 'selected' : '' %>>User</option>
+    </select><br>
+
+    <button type="submit">Save Changes</button>
+</form>
+
+<a href="/admin/users">Back to Users</a>
+
+<%- include('../partials/footer') %>

@@ -1,7 +1,9 @@
 const express = require('express');
 const session = require('express-session');
 const cookieParser = require('cookie-parser');
+const csurf = require('csurf');
 const path = require('path');
+
 const header = require('./fw/header');
 const footer = require('./fw/footer');
 const login = require('./login');
@@ -15,125 +17,168 @@ const searchProvider = require('./search/v2/index');
 const app = express();
 const PORT = 3000;
 
-// Middleware für Session-Handling
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'views'));
+
+// Middleware
+app.use(cookieParser());
 app.use(session({
-    secret: 'secret',
-    resave: true,
-    saveUninitialized: true
+    secret: 'aVeryStrongSecretHere', // change in production
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        httpOnly: true,
+        secure: false, // true in production with HTTPS
+        maxAge: 1000 * 60 * 60 // 1 hour
+    }
 }));
 
-// Middleware für Body-Parser
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
-app.use(cookieParser());
 
-// Routen
+// CSRF
+app.use(csurf());
+app.use((req, res, next) => {
+    res.locals.csrfToken = req.csrfToken();
+    next();
+});
+
+// Session & role check
+function activeUserSession(req) {
+    return req.session && req.session.username && req.session.userid;
+}
+
+function isAdmin(req, res, next) {
+    if (activeUserSession(req) && req.session.roleid === '1') {
+        next();
+    } else {
+        res.status(403).send('Access denied. Admins only.');
+    }
+}
+
+// Routes
 app.get('/', async (req, res) => {
     if (activeUserSession(req)) {
-        let html = await wrapContent(await index.html(req), req)
+        const html = await wrapContent(await index.html(req), req);
         res.send(html);
     } else {
-        res.redirect('login');
+        res.redirect('/login');
     }
 });
 
 app.post('/', async (req, res) => {
     if (activeUserSession(req)) {
-        let html = await wrapContent(await index.html(req), req)
+        const html = await wrapContent(await index.html(req), req);
         res.send(html);
     } else {
-        res.redirect('login');
-    }
-})
-
-// edit task
-app.get('/admin/users', async (req, res) => {
-    if(activeUserSession(req)) {
-        let html = await wrapContent(await adminUser.html, req);
-        res.send(html);
-    } else {
-        res.redirect('/');
+        res.redirect('/login');
     }
 });
 
-// edit task
+// Admin
+app.get('/admin/users', isAdmin, async (req, res) => {
+    try {
+        const search = req.query.search || '';
+        const sort = req.query.sort || 'username';
+        const direction = req.query.direction === 'desc' ? 'desc' : 'asc';
+        const users = await adminUser.getUsers(search, sort, direction);
+        res.render('admin/dashboard', { users, search, sort, direction, csrfToken: req.csrfToken() });
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("Could not load user list.");
+    }
+});
+
+app.get('/admin/users/data', isAdmin, async (req, res) => {
+    try {
+        const search = req.query.search || '';
+        const sort = req.query.sort || 'username';
+        const users = await adminUser.getUsers(search, sort);
+        res.json(users);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to load users' });
+    }
+});
+
+app.get('/admin/users/create', isAdmin, adminUser.createForm);
+app.post('/admin/users/create', isAdmin, adminUser.createUser);
+app.get('/admin/users/edit/:id', isAdmin, adminUser.editForm);
+app.post('/admin/users/edit/:id', isAdmin, adminUser.updateUser);
+app.post('/admin/users/deactivate/:id', isAdmin, adminUser.deactivateUser);
+app.post('/admin/users/delete/:id', isAdmin, adminUser.deleteUser);
+
+// Task
 app.get('/edit', async (req, res) => {
     if (activeUserSession(req)) {
-        let html = await wrapContent(await editTask.html(req), req);
+        const html = await wrapContent(await editTask.html(req), req);
         res.send(html);
     } else {
         res.redirect('/');
     }
 });
 
-// Login-Seite anzeigen
-app.get('/login', async (req, res) => {
-    let content = await login.handleLogin(req, res);
-
-    if(content.user.userid !== 0) {
-        // login was successful... set cookies and redirect to /
-        login.startUserSession(res, content.user);
+app.post('/savetask', async (req, res) => {
+    if (activeUserSession(req)) {
+        const html = await wrapContent(await saveTask.html(req), req);
+        res.send(html);
     } else {
-        // login unsuccessful or not made jet... display login form
-        let html = await wrapContent(content.html, req);
+        res.redirect('/');
+    }
+});
+
+// Login
+app.get('/login', async (req, res) => {
+    const content = await login.handleLogin(req, res);
+    if (content.user && content.user.userid !== 0) {
+        req.session.username = content.user.username;
+        req.session.userid = content.user.userid;
+        req.session.roleid = String(content.user.roleid); 
+
+        res.redirect('/');
+    } else {
+        const html = await wrapContent(content.html, req);
         res.send(html);
     }
 });
 
-// Logout
 app.get('/logout', (req, res) => {
     req.session.destroy();
-    res.cookie('username','');
-    res.cookie('userid','');
+    res.clearCookie('connect.sid');
     res.redirect('/login');
 });
 
-// Profilseite anzeigen
+// Profile
 app.get('/profile', (req, res) => {
-    if (req.session.loggedin) {
+    if (activeUserSession(req)) {
         res.send(`Welcome, ${req.session.username}! <a href="/logout">Logout</a>`);
     } else {
         res.send('Please login to view this page');
     }
 });
 
-// save task
-app.post('/savetask', async (req, res) => {
-    if (activeUserSession(req)) {
-        let html = await wrapContent(await saveTask.html(req), req);
-        res.send(html);
-    } else {
-        res.redirect('/');
-    }
-});
-
-// search
+// Search
 app.post('/search', async (req, res) => {
-    let html = await search.html(req);
+    const html = await search.html(req);
     res.send(html);
 });
 
-// search provider
 app.get('/search/v2/', async (req, res) => {
-    let result = await searchProvider.search(req);
+    const result = await searchProvider.search(req);
     res.send(result);
 });
 
-
-// Server starten
+// Server start
 app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
 });
 
+// Helpers
 async function wrapContent(content, req) {
-    let headerHtml = await header(req);
-    return headerHtml+content+footer;
-}
-
-function activeUserSession(req) {
-    // check if cookie with user information ist set
-    console.log('in activeUserSession');
-    console.log(req.cookies);
-    return req.cookies !== undefined && req.cookies.username !== undefined && req.cookies.username !== '';
+    const headerHtml = await header({
+        username: req.session.username,
+        roleid: req.session.roleid
+    });
+    return headerHtml + content + footer;
 }

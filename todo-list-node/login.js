@@ -1,4 +1,5 @@
 const db = require('./fw/db');
+const bcrypt = require('bcrypt');
 
 async function handleLogin(req, res) {
     let msg = '';
@@ -12,66 +13,59 @@ async function handleLogin(req, res) {
             // Login is correct. Store user information to be returned.
             user.username = req.query.username;
             user.userid = result.userId;
+            user.roleid = result.roleId;
             msg = result.msg;
         } else {
             msg = result.msg;
         }
     }
 
-    return { 'html': msg + getHtml(), 'user': user };
+    return { 'html': msg + getHtml(req.csrfToken()), 'user': user };
 }
 
-function startUserSession(res, user) {
-    console.log('login valid... start user session now for userid '+user.userid);
-    res.cookie('username', user.username);
-    res.cookie('userid', user.userid);
-    res.redirect('/');
-}
-
-async function validateLogin (username, password) {
-    let result = { valid: false, msg: '', userId: 0 };
-
-    // Connect to the database
+async function validateLogin(username, password) {
+    let result = { valid: false, msg: '', userId: 0, roleId: 0 };
     const dbConnection = await db.connectDB();
 
-    const sql = `SELECT id, username, password FROM users WHERE username='`+username+`'`;
+    const sql = `
+        SELECT users.ID as id, users.username, users.password, roles.ID as roleid
+        FROM users
+        JOIN permissions ON users.ID = permissions.userID
+        JOIN roles ON permissions.roleID = roles.ID
+        WHERE users.username = ?
+    `;
+
     try {
-        const [results, fields] = await dbConnection.query(sql);
+        const [results] = await dbConnection.query(sql, [username]);
 
         if(results.length > 0) {
-            // Bind the result variables
-            let db_id = results[0].id;
-            let db_username = results[0].username;
-            let db_password = results[0].password;
+            const db_id = results[0].id;
+            const db_password = results[0].password;
 
-            // Verify the password
-            if (password == db_password) {
-                result.userId = db_id;
+            const match = await bcrypt.compare(password, db_password);
+            if (match) {
                 result.valid = true;
+                result.userId = db_id;
+                result.roleId = results[0].roleid;
                 result.msg = 'login correct';
             } else {
-                // Password is incorrect
                 result.msg = 'Incorrect password';
             }
         } else {
-            // Username does not exist
             result.msg = 'Username does not exist';
         }
-
-        console.log(results); // results contains rows returned by server
-        //console.log(fields); // fields contains extra meta data about results, if available
     } catch (err) {
         console.log(err);
     }
-    
+
     return result;
 }
 
-function getHtml() {
+function getHtml(csrfToken = '') {
     return `
     <h2>Login</h2>
-
     <form id="form" method="get" action="/login">
+        <input type="hidden" name="_csrf" value="${csrfToken}">
         <div class="form-group">
             <label for="username">Username</label>
             <input type="text" class="form-control size-medium" name="username" id="username">
@@ -89,5 +83,4 @@ function getHtml() {
 
 module.exports = {
     handleLogin: handleLogin,
-    startUserSession: startUserSession
 };

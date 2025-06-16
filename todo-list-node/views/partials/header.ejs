@@ -1,0 +1,9 @@
+<% if (typeof username !== 'undefined') { %>
+    <nav>
+        <a href="/">Tasks</a> |
+        <% if (roleid === '1') { %>
+            <a href="/admin/users">User List</a> |
+        <% } %>
+        <a href="/logout">Logout</a>
+    </nav>
+<% } %>
