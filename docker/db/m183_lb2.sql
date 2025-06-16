@@ -130,8 +130,8 @@ insert into roles (ID, title) values (2, 'User');
 insert into roles (ID, title) values (1, 'Admin');
 
 
-insert into users (ID, username, password) values (1, 'admin1', 'Awesome.Pass34');
-insert into users (ID, username, password) values (2, 'user1', 'Amazing.Pass23');
+insert into users (ID, username, password) values (1, 'admin1', '$2a$12$cdQ/4gATUHqrFmz/A01EcejKLdzztCLXGBw268EqC8MneGk1cWPWq');
+insert into users (ID, username, password) values (2, 'user1', '$2a$12$x7jZFhYbllpF8PkpLhHc/OjISYvGBRTdERMudvofj4Dcf1LasKvPy');
 
 insert into permissions(ID, userID, roleID) values(null, 1, 1);
 insert into permissions(ID, userID, roleID) values(null, 2, 2);
