@@ -1,15 +1,74 @@
-# LB2 Applikation
-Diese Applikation ist bewusst unsicher programmiert und sollte nie in produktiven Umgebungen zum Einsatz kommen. Ziel der Applikation ist es, Lernende für mögliche Schwachstellen in Applikationen zu sensibilisieren, diese anzuleiten, wie die Schwachstellen aufgespürt und geschlossen werden können.
+# 🛡️ LB2 Phase 1 - Secure ToDo App
 
-Die Applikation wird im Rahmen der LB2 im [Modul 183](https://gitlab.com/ch-tbz-it/Stud/m183/m183) durch die Lernenden bearbeitet.
+This project is a hardened version of a Node.js ToDo app built for **LB2 Phase 1 – Penetration Testing and Security Implementation**.  
+It addresses vulnerabilities in the original app by applying secure coding practices and protecting critical features.
 
-## Hinweise zur Installation
-Die Applikation steht als PHP- oder NodeJS-Applikation zur Verfügung. Abhängig davon, ob Sie die LB2 mit PHP oder NodeJS umsetzen möchten, müssen Sie entweder compose.php.yaml oder compose.node.yaml dem Docker-Compose-Befehl mit übergeben:
-* PHP: `docker compose -f compose.php.yaml up`
-* NodeJS: `docker compose -f compose.node.yaml up`
+---
 
-Bei NodeJS müssen vor dem Start der Container noch mit `npm install` die Abhängigkeiten installiert werden (wichtig: der Befehl muss innerhalb vom `todo-list-node`-Verzeichnis ausgeführt werden).
+## 🛠️ Tools Required
+Before getting started, make sure the following tools are installed:
 
-Der include-Befehl in den YAML-Files steht erst ab der Docker Compose Version 2.20.3 zur Verfügung (https://docs.docker.com/compose/multiple-compose-files/include/). Sollte der Rechner beim Ausführen des `docker compose`-Befehls einen Fehler bezüglich include werfen, da müssten Sie entweder Docker Compose auf die letzte Version aktualisieren oder die Containerdefinition von `compose.db.yaml` für den Datenbank-Container ins `compose.php.yaml` oder `compose.node.yaml` rein kopieren (unter services).
+- [Node.js](https://nodejs.org/) (v18 or later)
+- [npm](https://www.npmjs.com/) (comes with Node.js)
+- [Docker](https://www.docker.com/)
+- [Docker Compose](https://docs.docker.com/compose/)
+- [VS Code](https://code.visualstudio.com/) or any code editor
+- A modern browser (e.g., Chrome/Firefox) with **DevTools** (press `F12`)
 
-Wichtig: der Port 80 muss auf Ihrem Lokalen Rechner zur Verfügung stehen. Wird dieser bereits verwendet, können Sie in der `compose.php.yaml` respektive in der `compose.node.yaml` den Port so anpassen, dass die Applikation auf einem anderen Port wie dem Port 80 zur Verfügung steht.
+---
+
+## 🚀 Getting Started
+
+### 1. 📥 Clone the Project
+
+```bash
+git clone <repository-url>
+```
+
+### 2. 📁 Open the Project Folder "M183_ToDoList_App"
+
+<p>recommended IDE: VSCode</p>
+
+## 3. 📦 Installation
+Open the integrated terminal in VSCode/IDE you are using. Make sure you are inside the todo-liste-node folder: 
+```bash
+cd todo-liste-node
+```
+
+Install the required Node.js packages:
+```bash
+npm install
+```
+
+Start the app using Docker:
+```bash
+docker-compose up --build -d
+```
+This will start the Node.js app and the database. Access the app at:
+```bash
+localhost
+```
+
+
+## 👤 Default Login Credentials
+
+| Role  | Username  | Password       |
+| ----- | --------- | -------------- |
+| Admin | admin1    | Awesome.Pass34 |
+| User  | user1     | Amazing.Pass23 |
+
+
+## ✅ Security Features Implemented
+
+| # | Security Feature                | Status |
+| - | ------------------------------- | ------ |
+| 1 | Secure Session-Based Login      | ✅ Done |
+| 2 | CSRF Protection (using `csurf`) | ✅ Done |
+| 3 | XSS Prevention (`ejs` escaping) | ✅ Done |
+| 4 | User Authentication + AuthZ     | ✅ Done |
+| 5 | Admin CRUD (Create, Edit, etc.) | ✅ Done |
+| 6 | Sort & Search Users             | ✅ Done |
+| 7 | Password Hashing (bcrypt)       | ✅ Done |
+| 8 | Access Control on Routes        | ✅ Done |
+
+
