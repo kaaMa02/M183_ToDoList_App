@@ -6,14 +6,20 @@ async function getHtml(req) {
         return "Not enough information provided";
     }
 
+    const allowedPaths = ['/search/v2/']; // whitelist paths
     let provider = req.body.provider;
-    let terms = req.body.terms;
-    let userid = req.body.userid;
 
-    await sleep(1000); // this is a long, long search!!
+    if (!allowedPaths.includes(provider)) {
+        return "Invalid search provider";
+    }
 
-    let theUrl='http://localhost:3000'+provider+'?userid='+userid+'&terms='+terms;
-    let result = await callAPI('GET', theUrl, false);
+    const terms = req.body.terms;
+    const userid = req.body.userid;
+
+    await sleep(1000); // simulate long search
+
+    const theUrl = 'http://localhost:3000' + provider + '?userid=' + userid + '&terms=' + terms;
+    const result = await callAPI('GET', theUrl, false);
     return result;
 }
 

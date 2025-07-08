@@ -2,34 +2,32 @@ const db = require('./fw/db');
 
 async function getHtml(req) {
     let html = '';
-    let taskId = '';
+    let taskId = req.body.id || '';
+    const title = req.body.title;
+    const state = req.body.state;
+    const userid = req.session.userid; // use session not cookies!
 
-    // see if the id exists in the database
-    if (req.body.id !== undefined && req.body.id.length !== 0) {
-        taskId = req.body.id;
-        let stmt = await db.executeStatement('select ID, title, state from tasks where ID = ' + taskId);
-        if (stmt.length === 0) {
-            taskId = '';
-        }
-    }
+    const conn = await db.connectDB();
 
-    if (req.body.title !== undefined && req.body.state !== undefined){
-        let state = req.body.state;
-        let title = req.body.title;
-        let userid = req.cookies.userid;
+    try {
+        if (taskId) {
+            const [check] = await conn.query('SELECT UserID FROM tasks WHERE ID = ?', [taskId]);
+            if (!check.length || check[0].UserID !== userid) {
+                return "<span class='info info-error'>Unauthorized update attempt</span>";
+            }
 
-        if (taskId === ''){
-            stmt = db.executeStatement("insert into tasks (title, state, userID) values ('"+title+"', '"+state+"', '"+userid+"')");
+            await conn.query('UPDATE tasks SET title = ?, state = ? WHERE ID = ?', [title, state, taskId]);
         } else {
-            stmt = db.executeStatement("update tasks set title = '"+title+"', state = '"+state+"' where ID = "+taskId);
+            await conn.query('INSERT INTO tasks (title, state, userID) VALUES (?, ?, ?)', [title, state, userid]);
         }
 
-        html += "<span class='info info-success'>Update successfull</span>";
-    } else {
-        html += "<span class='info info-error'>No update was made</span>";
+        html += "<span class='info info-success'>Update successful</span>";
+    } catch (err) {
+        console.error(err);
+        html += "<span class='info info-error'>Error during update</span>";
     }
 
     return html;
 }
 
-module.exports = { html: getHtml }
+module.exports = { html: getHtml };

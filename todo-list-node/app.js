@@ -13,9 +13,19 @@ const editTask = require('./edit');
 const saveTask = require('./savetask');
 const search = require('./search');
 const searchProvider = require('./search/v2/index');
+const MySQLStore = require('express-mysql-session')(session);
+const rateLimit = require('express-rate-limit');
 
 const app = express();
 const PORT = 3000;
+
+const sessionStore = new MySQLStore({
+  host: process.env.DB_HOST,
+  port: process.env.DB_PORT,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME 
+});
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
@@ -23,6 +33,7 @@ app.set('views', path.join(__dirname, 'views'));
 // Middleware
 app.use(cookieParser());
 app.use(session({
+    store: sessionStore,
     secret: 'aVeryStrongSecretHere', // change in production
     resave: false,
     saveUninitialized: false,
@@ -128,19 +139,25 @@ app.post('/savetask', async (req, res) => {
     }
 });
 
-// Login
+// Show login form
 app.get('/login', async (req, res) => {
-    const content = await login.handleLogin(req, res);
-    if (content.user && content.user.userid !== 0) {
-        req.session.username = content.user.username;
-        req.session.userid = content.user.userid;
-        req.session.roleid = String(content.user.roleid); 
+  const html = await wrapContent(login.getHtml(req.csrfToken()), req);
+  res.send(html);
+});
 
-        res.redirect('/');
-    } else {
-        const html = await wrapContent(content.html, req);
-        res.send(html);
-    }
+// Handle login form submission
+app.post('/login', async (req, res) => {
+  const content = await login.handleLogin(req, res);
+
+  if (content.user && content.user.userid !== 0) {
+    req.session.username = content.user.username;
+    req.session.userid = content.user.userid;
+    req.session.roleid = String(content.user.roleid);
+    res.redirect('/');
+  } else {
+    const html = await wrapContent(content.html, req);
+    res.send(html);
+  }
 });
 
 app.get('/logout', (req, res) => {
@@ -158,8 +175,14 @@ app.get('/profile', (req, res) => {
     }
 });
 
+const searchLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 10, // 10 requests
+  message: "Too many searches, slow down!"
+});
+
 // Search
-app.post('/search', async (req, res) => {
+app.post('/search', searchLimiter, async (req, res) => {
     const html = await search.html(req);
     res.send(html);
 });

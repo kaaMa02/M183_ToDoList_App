@@ -5,20 +5,20 @@ async function search(req) {
         return "Not enough information to search";
     }
 
-    let userid = req.query.userid;
-    let terms = req.query.terms;
-    let result = '';
+    const userid = parseInt(req.query.userid);
+    const terms = `%${req.query.terms}%`;
 
-    let stmt = await db.executeStatement("select ID, title, state from tasks where userID = "+userid+" and title like '%"+terms+"%'");
+    const sql = "SELECT ID, title, state FROM tasks WHERE userID = ? AND title LIKE ?";
+    const stmt = await db.executeStatement(sql, [userid, terms]);
+
+    let result = '';
     if (stmt.length > 0) {
-        stmt.forEach(function(row) {
-            result += row.title+' ('+row.state+')<br />';
+        stmt.forEach(row => {
+            result += `${row.title} (${row.state})<br />`;
         });
     }
 
     return result;
 }
 
-module.exports = {
-    search: search
-};
+module.exports = { search };

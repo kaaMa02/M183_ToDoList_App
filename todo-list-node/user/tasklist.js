@@ -10,20 +10,20 @@ async function getHtml(req) {
                 <th>Description</th>
                 <th>State</th>
                 <th></th>
-            </tr>
-    `;
+            </tr>`;
 
-    let conn = await db.connectDB();
-    let [result, fields] = await conn.query('select ID, title, state from tasks where UserID = ' + req.cookies.userid);
-    console.log(result);
-    result.forEach(function(row) {
+    const conn = await db.connectDB();
+    const userid = req.session.userid;  // Use session instead of cookie!
+    const [result] = await conn.query('SELECT ID, title, state FROM tasks WHERE UserID = ?', [userid]);
+
+    result.forEach(row => {
         html += `
             <tr>
-                <td>`+row.ID+`</td>
-                <td class="wide">`+row.title+`</td>
-                <td>`+ucfirst(row.state)+`</td>
+                <td>${row.ID}</td>
+                <td class="wide">${escapeHtml(row.title)}</td>
+                <td>${ucfirst(row.state)}</td>
                 <td>
-                    <a href="edit?id=`+row.ID+`">edit</a> | <a href="delete?id=`+row.ID+`">delete</a>
+                    <a href="edit?id=${row.ID}">edit</a> | <a href="delete?id=${row.ID}">delete</a>
                 </td>
             </tr>`;
     });
@@ -35,10 +35,15 @@ async function getHtml(req) {
     return html;
 }
 
+function escapeHtml(text) {
+    return text.replace(/[&<>"']/g, function (char) {
+        const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+        return map[char];
+    });
+}
+
 function ucfirst(string) {
     return string.charAt(0).toUpperCase() + string.slice(1);
 }
 
-module.exports = {
-    html: getHtml
-}
+module.exports = { html: getHtml };

@@ -5,21 +5,18 @@ async function handleLogin(req, res) {
     let msg = '';
     let user = { 'username': '', 'userid': 0 };
 
-    if(typeof req.query.username !== 'undefined' && typeof req.query.password !== 'undefined') {
-        // Get username and password from the form and call the validateLogin
-        let result = await validateLogin(req.query.username, req.query.password);
+    if (req.body && req.body.username && req.body.password) {
+    const result = await validateLogin(req.body.username, req.body.password);
 
-        if(result.valid) {
-            // Login is correct. Store user information to be returned.
-            user.username = req.query.username;
-            user.userid = result.userId;
-            user.roleid = result.roleId;
-            msg = result.msg;
-        } else {
-            msg = result.msg;
-        }
+    if (result.valid) {
+        user.username = req.body.username;
+        user.userid = result.userId;
+        user.roleid = result.roleId;
+        msg = result.msg;
+    } else {
+        msg = result.msg;
     }
-
+}
     return { 'html': msg + getHtml(req.csrfToken()), 'user': user };
 }
 
@@ -49,10 +46,10 @@ async function validateLogin(username, password) {
                 result.roleId = results[0].roleid;
                 result.msg = 'login correct';
             } else {
-                result.msg = 'Incorrect password';
+                result.msg = 'Username or password is incorrect';
             }
         } else {
-            result.msg = 'Username does not exist';
+            result.msg = 'Username or password is incorrect';
         }
     } catch (err) {
         console.log(err);
@@ -64,7 +61,7 @@ async function validateLogin(username, password) {
 function getHtml(csrfToken = '') {
     return `
     <h2>Login</h2>
-    <form id="form" method="get" action="/login">
+    <form id="form" method="POST" action="/login">
         <input type="hidden" name="_csrf" value="${csrfToken}">
         <div class="form-group">
             <label for="username">Username</label>
@@ -72,7 +69,7 @@ function getHtml(csrfToken = '') {
         </div>
         <div class="form-group">
             <label for="password">Password</label>
-            <input type="text" class="form-control size-medium" name="password" id="password">
+            <input type="password" class="form-control size-medium" name="password" id="password">
         </div>
         <div class="form-group">
             <label for="submit" ></label>
@@ -83,4 +80,5 @@ function getHtml(csrfToken = '') {
 
 module.exports = {
     handleLogin: handleLogin,
+    getHtml: getHtml,
 };
