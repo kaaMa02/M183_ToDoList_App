@@ -1,4 +1,4 @@
-# 🛡️ LB2 Phase 1 - Secure ToDo App
+# 🛡️ LB2 Phase 1,3 - Secure ToDo App
 
 This project is a hardened version of a Node.js ToDo app built for **LB2 Phase 1 – Penetration Testing and Security Implementation**.  
 It addresses vulnerabilities in the original app by applying secure coding practices and protecting critical features.
